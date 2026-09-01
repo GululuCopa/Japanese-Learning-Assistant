@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": [
+    "electron.vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.mjs",
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/renderer/**/*.ts",
+    "src/renderer/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "scripts/sqlite-abi-policy.mjs"
+  ]
+}
