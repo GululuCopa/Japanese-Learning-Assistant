@@ -138,13 +138,60 @@ src/
 
 ### 环境要求
 
-- Windows 10/11 x64，或 macOS
-- Node.js 22
+- Windows 10/11 x64，或 macOS arm64（一键安装脚本仅支持这两个组合）
+- Node.js 22（推荐；更高 major 会警告后继续，但未经 CI 固定验证）
 - npm
 - 一个支持图片输入的 OpenAI-compatible AI API（仅分析图片时需要视觉模型）
 - 如需使用 MiniMax 发音：一个 MiniMax API Key；系统语音模式不需要 TTS Key
 
-### 安装和启动
+### 一键检查与安装
+
+仓库根目录提供面向当前机器的一键入口。脚本从自身位置定位项目根目录，不依赖你从哪里启动。
+
+**Windows 10/11 x64：** 双击 `install-windows.cmd`，或在 CMD/PowerShell 中运行：
+
+```bat
+install-windows.cmd
+```
+
+该入口会以 `-NoProfile -ExecutionPolicy Bypass` 调用 `scripts/install.ps1`，只影响这一次脚本执行，不会永久修改系统 ExecutionPolicy。
+
+**macOS arm64：** 双击 `install-macos.command`，或在终端运行：
+
+```bash
+./install-macos.command
+```
+
+默认流程：
+
+1. 检查操作系统、架构、Node.js（>= 22）和 npm。
+2. 运行 `npm ci`（按 lockfile **重建** `node_modules`）。
+3. 运行 `npm run format`、`npm run lint`、`npm run typecheck`、`npm test -- --run`。
+4. 打包当前平台：Windows 为 `npm run package:win`，macOS 为 `npm run package:dir`。
+5. 安装并启动：Windows 启动并等待 `release/*-setup-x64.exe`；macOS 安装到 `$HOME/Applications/Japanese Learning Assistant.app` 后用 `open` 启动。
+
+可选模式：
+
+```text
+--help           查看中文说明
+--check-only     只检查环境，不改依赖、不构建、不安装
+--skip-checks    仍执行 npm ci 和打包，但跳过质量门禁（会打印醒目警告）
+--package-only   完成依赖、门禁和打包，但不安装或启动
+```
+
+`--check-only` 不能与 `--package-only` 或 `--skip-checks` 一起使用。
+
+脚本**不会**：
+
+- 安装或升级 Node.js、npm、Git
+- 下载/克隆 Git 仓库
+- 安装系统日语语音或写入 AI/TTS API Key
+- 使用 sudo、绕过 Gatekeeper，或修改系统安全设置
+- 删除 `$HOME/Applications` 下除本应用精确 bundle 以外的任何内容
+
+失败时脚本以非零退出，并打印失败命令和下一步建议。当前安装包未签名，Windows SmartScreen 或 macOS Gatekeeper 可能提示风险，需要在系统对话框中手动确认。应用用户数据在 Electron `userData` 中，不会因为替换 Applications 里的 app bundle 而被删除。
+
+### 开发者手动安装和启动
 
 ```bash
 git clone https://github.com/GululuCopa/Japanese-Learning-Assistant.git
@@ -246,16 +293,18 @@ Linux 当前不支持系统发音，会返回明确错误，不会崩溃。AI �
 
 ## 常用命令
 
-| 命令                  | 说明                                                         |
-| --------------------- | ------------------------------------------------------------ |
-| `npm run dev`         | 启动 Electron + Vite 开发环境，并准备 Electron 的 SQLite ABI |
-| `npm run lint`        | 运行 ESLint                                                  |
-| `npm run format`      | 检查 Prettier 格式                                           |
-| `npm run typecheck`   | 运行 TypeScript 类型检查                                     |
-| `npm test -- --run`   | 准备 Node 的 SQLite ABI 并运行完整测试                       |
-| `npm run build`       | 构建 main、preload 和 renderer                               |
-| `npm run package:dir` | 打包当前操作系统的 unpacked 应用目录                         |
-| `npm run package:win` | 构建 Windows x64 NSIS 安装包和 unpacked 目录                 |
+| 命令                      | 说明                                                         |
+| ------------------------- | ------------------------------------------------------------ |
+| `npm run dev`             | 启动 Electron + Vite 开发环境，并准备 Electron 的 SQLite ABI |
+| `npm run lint`            | 运行 ESLint                                                  |
+| `npm run format`          | 检查 Prettier 格式                                           |
+| `npm run typecheck`       | 运行 TypeScript 类型检查                                     |
+| `npm test -- --run`       | 准备 Node 的 SQLite ABI 并运行完整测试                       |
+| `npm run build`           | 构建 main、preload 和 renderer                               |
+| `npm run package:dir`     | 打包当前操作系统的 unpacked 应用目录                         |
+| `npm run package:win`     | 构建 Windows x64 NSIS 安装包和 unpacked 目录                 |
+| `./install-macos.command` | macOS arm64 一键检查/打包/安装（见上文）                     |
+| `install-windows.cmd`     | Windows x64 一键检查/打包/安装（见上文）                     |
 
 ## 测试
 
