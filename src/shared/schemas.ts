@@ -143,14 +143,22 @@ export const settingsUpdateSchema = z.object({
   aiModel: z.string(),
   aiApiKey: z.string().optional(),
   voiceGender: z.enum(['female', 'male']),
+  ttsProvider: z.enum(['system', 'minimax']),
+  minimaxRegion: z.enum(['china', 'global']),
+  minimaxModel: z.string(),
+  minimaxFemaleVoice: z.string(),
+  minimaxMaleVoice: z.string(),
+  minimaxApiKey: z.string().optional(),
   obsidianVaultPath: z.string(),
   responseLanguage: z.literal('zh-CN'),
   clearAiApiKey: z.boolean().optional(),
+  clearMinimaxApiKey: z.boolean().optional(),
 })
 
 export const speakInputSchema = z.object({
   text: z.string().min(1),
   speed: z.union([z.literal(0.75), z.literal(1)]),
+  voiceGender: z.enum(['female', 'male']).optional(),
 })
 
 export const idSchema = z.object({

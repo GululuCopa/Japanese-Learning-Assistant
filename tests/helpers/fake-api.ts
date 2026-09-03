@@ -1,4 +1,9 @@
 import { vi } from 'vitest'
+import {
+  DEFAULT_MINIMAX_FEMALE_VOICE,
+  DEFAULT_MINIMAX_MALE_VOICE,
+  DEFAULT_MINIMAX_MODEL,
+} from '../../src/shared/constants'
 import type {
   JapaneseAssistantAPI,
   NoteRecord,
@@ -33,6 +38,12 @@ export function createFakeApi(options?: {
     aiModel: options?.configured === false ? '' : 'gpt-test',
     hasAiApiKey: options?.configured !== false,
     voiceGender: 'female',
+    ttsProvider: 'system',
+    minimaxRegion: 'china',
+    minimaxModel: DEFAULT_MINIMAX_MODEL,
+    minimaxFemaleVoice: DEFAULT_MINIMAX_FEMALE_VOICE,
+    minimaxMaleVoice: DEFAULT_MINIMAX_MALE_VOICE,
+    hasMinimaxApiKey: false,
     obsidianVaultPath: '',
     responseLanguage: 'zh-CN',
     encryptionAvailable: true,
@@ -173,7 +184,11 @@ export function createFakeApi(options?: {
         notes.push(note)
         return { note, alreadySaved: false }
       }),
-      delete: vi.fn(async () => undefined),
+      delete: vi.fn(async (id: string) => {
+        const index = notes.findIndex((note) => note.id === id)
+        if (index >= 0) notes.splice(index, 1)
+        return { ok: true as const, obsidianFileDeleted: false, message: '已删除笔记。' }
+      }),
       exportToObsidian: vi.fn(async () => ({
         ok: true,
         relPath: 'Japanese/Words/構う.md',
@@ -188,6 +203,14 @@ export function createFakeApi(options?: {
           aiModel: update.aiModel,
           hasAiApiKey: Boolean(update.aiApiKey) || settings.hasAiApiKey,
           voiceGender: update.voiceGender,
+          ttsProvider: update.ttsProvider,
+          minimaxRegion: update.minimaxRegion,
+          minimaxModel: update.minimaxModel,
+          minimaxFemaleVoice: update.minimaxFemaleVoice,
+          minimaxMaleVoice: update.minimaxMaleVoice,
+          hasMinimaxApiKey: update.clearMinimaxApiKey
+            ? false
+            : Boolean(update.minimaxApiKey) || settings.hasMinimaxApiKey,
           obsidianVaultPath: update.obsidianVaultPath,
         })
         return settings

@@ -4,6 +4,8 @@ export type NoteKind = 'word' | 'sentence' | 'grammar'
 export type MessageRole = 'user' | 'assistant'
 export type ResponseLanguage = 'zh-CN'
 export type VoiceGender = 'female' | 'male'
+export type TTSProviderKind = 'system' | 'minimax'
+export type MiniMaxRegion = 'china' | 'global'
 
 export interface ExampleSentence {
   text: string
@@ -190,14 +192,27 @@ export interface ExportResult {
   message: string
 }
 
+export interface DeleteNoteResult {
+  ok: true
+  obsidianFileDeleted: boolean
+  message: string
+}
+
 export interface SettingsUpdate {
   aiBaseUrl: string
   aiModel: string
   aiApiKey?: string
   voiceGender: VoiceGender
+  ttsProvider: TTSProviderKind
+  minimaxRegion: MiniMaxRegion
+  minimaxModel: string
+  minimaxFemaleVoice: string
+  minimaxMaleVoice: string
+  minimaxApiKey?: string
   obsidianVaultPath: string
   responseLanguage: ResponseLanguage
   clearAiApiKey?: boolean
+  clearMinimaxApiKey?: boolean
 }
 
 export interface PublicSettings {
@@ -205,6 +220,12 @@ export interface PublicSettings {
   aiModel: string
   hasAiApiKey: boolean
   voiceGender: VoiceGender
+  ttsProvider: TTSProviderKind
+  minimaxRegion: MiniMaxRegion
+  minimaxModel: string
+  minimaxFemaleVoice: string
+  minimaxMaleVoice: string
+  hasMinimaxApiKey: boolean
   obsidianVaultPath: string
   responseLanguage: ResponseLanguage
   encryptionAvailable: boolean
@@ -214,6 +235,7 @@ export interface PublicSettings {
 export interface SpeakInput {
   text: string
   speed: 0.75 | 1
+  voiceGender?: VoiceGender
 }
 
 export interface SpeakResult {
@@ -262,7 +284,7 @@ export interface JapaneseAssistantAPI {
     list(input: ListNotesInput): Promise<NoteRecord[]>
     get(id: string): Promise<NoteRecord>
     save(input: SaveNoteInput): Promise<SaveNoteResult>
-    delete(id: string): Promise<void>
+    delete(id: string): Promise<DeleteNoteResult>
     exportToObsidian(id: string): Promise<ExportResult>
   }
   settings: {

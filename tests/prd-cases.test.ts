@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { kamauAnalysis, miniPngImage, namaikiAnalysis } from './fixtures/prd-cases'
-import { createTestApp } from './helpers/app'
+import { createTestApp, testSettings } from './helpers/app'
 
 describe('PRD V0.1 definition of done', () => {
   it('case 1: 生意気怎么念 returns reading なまいき and TTS audio', async () => {
@@ -14,14 +14,7 @@ describe('PRD V0.1 definition of done', () => {
         }),
       },
     })
-    app.settings.save({
-      aiBaseUrl: 'https://example.test/v1',
-      aiModel: 'm',
-      aiApiKey: 'k',
-      voiceGender: 'female',
-      obsidianVaultPath: '',
-      responseLanguage: 'zh-CN',
-    })
+    app.settings.save(testSettings({ aiModel: 'm', aiApiKey: 'k' }))
     const conversation = app.conversations.create()
     const result = await app.conversations.send({
       conversationId: conversation.id,

@@ -18,7 +18,7 @@ Obsidian 笔记沉淀
 
 本项目基于 Electron + React + TypeScript 构建，支持 **Windows 10/11 x64**，也支持在 **macOS** 上开发和运行。
 
-> 当前版本为 V0.1。AI 分析使用 OpenAI-compatible API；发音使用 Windows / macOS 已安装的日语系统语音，无需下载模型、启动本地引擎或填写 TTS API Key。详见 [系统日语发音](#系统日语发音)。
+> 当前版本为 V0.1。AI 分析使用 OpenAI-compatible API；发音默认使用 Windows / macOS 已安装的日语系统语音，也可以在设置中显式切换到 MiniMax TTS。系统语音无需下载模型或启动本地引擎；MiniMax 需要用户自行提供 API Key。详见 [发音](#发音)。
 
 ## 项目目标
 
@@ -28,6 +28,14 @@ Obsidian 笔记沉淀
 - **形成个人知识库**：将单词、句子、语法和截图保存到笔记，并导出到 Obsidian。
 - **保持低摩擦体验**：发送后立即显示用户消息和图片，模型分析期间可以切换其他 Tab，回到对话后结果会继续显示。
 - **优先保护本地数据**：API Key 保存在 Electron `userData` 中，并尽可能使用操作系统安全存储加密。
+
+## 当前版本已实现
+
+- 系统 TTS 默认支持 Windows 10/11 与 macOS，提供男声 / 女声选择。
+- 可选 MiniMax TTS 配置，支持国内 / 海外区域、模型、日语男声 / 女声音色和安全保存 API Key。
+- 修复设置页未保存的男声 / 女声选择无法立即试听的问题。
+- 删除已导出到 Obsidian 的收藏时，会同步删除当前 Vault 中对应的 Markdown 文件；外部删除失败时保留本地收藏。
+- Windows x64 NSIS 安装包和 macOS arm64 目录包均已完成构建验证。
 
 ## 核心功能
 
@@ -57,14 +65,17 @@ Obsidian 笔记沉淀
 - 学习重点
 - AI 推荐收藏项
 
-### 3. 系统日语发音
+### 3. 发音
 
-- 使用操作系统自带的日语语音：macOS 的 `say`，Windows 的系统 Speech API。
-- 支持女声和男声两个偏好；若对应性别的日语语音不可用，会回退到已安装的任意日语系统语音。
-- 支持 `0.75x` 和 `1.0x` 播放速度（生成一份常速音频，由播放器调整倍速）。
-- 音频结果会缓存，重复播放相同文本和音色时不会再次合成。
-- 仅在用户点击发音时生成音频，不启动常驻服务、容器或 Python runtime。
-- 发音在主进程完成，不向 renderer 暴露 Node.js 或文件系统能力。
+应用支持两个 TTS 提供商，默认使用系统语音：
+
+- **系统语音（默认）**：macOS 使用 `say`，Windows 使用系统 Speech API；无需 TTS API Key、容器、本地模型或常驻服务。
+- **MiniMax TTS（可选）**：通过 MiniMax T2A v2 API 生成日语 MP3；需要在设置中填写自己的 MiniMax API Key。
+- 两种提供商都支持女声和男声选择。系统语音在对应性别不可用时，会回退到已安装的任意日语系统语音。
+- 支持 `0.75x` 和 `1.0x` 播放速度；应用只合成一次常速音频，由播放器调整倍速。
+- 成功音频会缓存，重复播放相同文本、模型和音色时不会重复请求 MiniMax。
+- 仅在用户点击发音时生成或请求音频，不自动播放。
+- 发音请求和 API Key 处理均在 Electron 主进程完成，不向 renderer 暴露 Node.js、文件系统或真实 Key。
 
 ### 4. 收藏和笔记
 
@@ -89,6 +100,8 @@ Japanese/Assets
 
 导出过程会限制路径必须位于用户选择的 Vault 内，避免路径穿越到 Vault 外部。
 
+删除已收藏笔记时，如果笔记曾导出到当前配置的 Vault，应用会先删除对应的 Markdown 文件，再删除本地收藏记录。若文件已不存在会视为已同步；若 Vault 无权限或路径异常，则保留本地收藏并显示错误，不会静默删除。截图资源和其他 Vault 文件不会因为删除笔记而被删除。
+
 ### 6. 对话历史
 
 - 查看历史对话列表。
@@ -106,7 +119,7 @@ src/
 │   ├── conversation/        对话和消息服务
 │   ├── database/            better-sqlite3 数据访问
 │   ├── notes/               收藏、笔记和 Obsidian 导出
-│   └── tts/                 系统 TTS provider（Windows / macOS）
+│   └── tts/                 系统 TTS 与 MiniMax TTS provider
 ├── preload/                 contextIsolation 下的类型化安全桥接
 ├── renderer/                React 页面和组件
 └── shared/                  类型、schema、错误和 provider contract
@@ -128,7 +141,8 @@ src/
 - Windows 10/11 x64，或 macOS
 - Node.js 22
 - npm
-- 一个支持图片输入的 OpenAI-compatible AI API
+- 一个支持图片输入的 OpenAI-compatible AI API（仅分析图片时需要视觉模型）
+- 如需使用 MiniMax 发音：一个 MiniMax API Key；系统语音模式不需要 TTS Key
 
 ### 安装和启动
 
@@ -150,10 +164,12 @@ npm run dev
 
 1. 打开“设置”。
 2. 填写 AI 接口地址、模型和 API Key。
-3. 选择女声或男声。
-4. 确认操作系统已安装日语系统语音；可在设置页点击“测试发音”。
-5. 回到“对话”。
-6. 输入日语或拖入图片后发送。
+3. 在“发音”中选择“系统语音”或“MiniMax”。
+4. 选择女声或男声。
+5. 如果选择 MiniMax，填写 API Key 并选择国内/海外区域、模型和音色；系统语音不需要 TTS Key。
+6. 点击“保存并测试发音”。
+7. 回到“对话”。
+8. 输入日语或拖入图片后发送。
 
 AI API Key 会保存在 Electron 的应用数据目录中，不会显示在 renderer，也不会写入日志。
 
@@ -169,9 +185,11 @@ AI API Key 会保存在 Electron 的应用数据目录中，不会显示在 rend
 
 项目不会在 README、`.env` 或前端代码中保存真实 API Key。开发环境可以参考 `.env.example`，但正式 Key 应通过应用设置保存。
 
-## 系统日语发音
+## 发音
 
-发音使用操作系统已安装的日语系统语音，**不需要**容器、Python、本地模型下载或 TTS API Key。点击分析卡片上的 `0.75x` / `1.0x`，或设置页的「测试发音」时才会合成音频。
+### 系统日语发音
+
+系统语音使用操作系统已安装的日语语音，**不需要**容器、Python、本地模型下载或 TTS API Key。点击分析卡片上的 `0.75x` / `1.0x`，或设置页的「保存并测试发音」时才会合成音频。
 
 ### macOS
 
@@ -190,6 +208,19 @@ AI API Key 会保存在 Electron 的应用数据目录中，不会显示在 rend
 若提示未找到 Windows 日语系统语音，请先安装日语语音包后重试。
 
 Linux 当前不支持系统发音，会返回明确错误，不会崩溃。AI 分析在未安装日语语音时仍可使用。
+
+### MiniMax TTS
+
+在“设置 → 发音”中将提供商切换为 **MiniMax**，然后填写：
+
+- **MiniMax API Key**：只在主进程中使用；支持系统安全存储时会加密保存，不会回显到前端或写入数据库明文。
+- **区域**：国内默认使用 `api.minimaxi.com`；海外使用 `api.minimax.io`。请让区域与 Key 的服务区域保持一致。
+- **模型**：默认 `speech-2.8-hd`，也支持 `speech-2.8-turbo`。
+- **女声音色 / 男声音色**：从应用提供的日语音色列表中选择。
+
+点击「保存并测试发音」后，设置才会生效。MiniMax 失败时不会自动切换到系统语音或其他付费服务。应用会缓存已经成功生成的音频，但这不等同于 MiniMax 账户的服务端限额；实际扣费和额度以 MiniMax 账户规则为准。
+
+建议：如果只是偶尔朗读单句，可以继续使用系统语音；如果需要更自然的音色，再切换到 MiniMax。
 
 ## 数据位置
 
@@ -248,7 +279,8 @@ npm run build
 - 收藏 payload 和严格 IPC 校验
 - 图片选择、保存、读取和渲染
 - 系统 TTS provider（macOS say/afconvert、Windows Speech、缓存与错误提示）
-- 设置安全存储和 Obsidian 导出
+- MiniMax TTS 请求、十六进制音频解码、缓存、超时和错误映射
+- 设置安全存储、MiniMax Key 脱敏和 Obsidian 导出/删除同步
 - Windows/macOS 路径安全与 Electron 窗口安全配置
 
 ## 打包和发布
@@ -298,7 +330,15 @@ npm run package:dir
 - **Windows**：在语言设置中安装日语语音包后重试。
 - **Linux**：当前版本不支持系统发音。
 
-### 发音生成超时或失败
+### MiniMax 发音失败
+
+- 确认 MiniMax API Key 与选择的区域一致。
+- 确认账户有可用额度，Token Plan 没有耗尽。
+- 国内 Key 使用“国内”区域，海外 Key 使用“海外”区域。
+- 如果提示参数或音色无效，先恢复默认模型和音色后重试。
+- 应用不会因为 MiniMax 失败而自动切换到系统语音。
+
+### 系统发音生成超时或失败
 
 系统语音命令可能被策略拦截、超时或返回空音频。请确认：
 
@@ -320,9 +360,10 @@ TSM AdjustCapsLockLEDForKeyTransitionHandling
 ## 当前限制
 
 - 需要用户提供 OpenAI-compatible AI API 和 API Key。
-- 发音依赖操作系统已安装的日语系统语音；Linux 不支持。
+- 系统发音依赖操作系统已安装的日语系统语音；Linux 不支持。
+- MiniMax TTS 需要用户自行承担对应 API 调用费用，应用不提供服务端消费上限。
 - Windows 安装包目前未签名。
-- 自动化测试不会调用真实 AI、真实 Windows 系统语音或真实 Obsidian。
+- 自动化测试不会调用真实 AI、MiniMax API、真实 Windows 系统语音或真实 Obsidian。
 - 项目当前重点是日语文本/截图理解，不包含完整的课程、复习计划或词汇统计系统。
 
 ## License

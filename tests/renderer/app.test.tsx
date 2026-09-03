@@ -55,7 +55,7 @@ describe('renderer interactions', () => {
     expect(screen.queryByLabelText(/TTS API Key/)).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '女声' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '男声' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '测试发音' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存并测试发音' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '一键安装语音引擎' })).not.toBeInTheDocument()
     expect(screen.getByText(/Windows \/ macOS 日语系统语音/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '历史' }))

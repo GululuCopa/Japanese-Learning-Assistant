@@ -11,6 +11,42 @@ export const DEFAULT_VOICE_GENDER = 'female' as const
 
 export const SYSTEM_TTS_TEST_TEXT = 'こんにちは。これは発音テストです。'
 
+export const DEFAULT_TTS_PROVIDER = 'system' as const
+export const DEFAULT_MINIMAX_REGION = 'china' as const
+export const DEFAULT_MINIMAX_MODEL = 'speech-2.8-hd' as const
+export const DEFAULT_MINIMAX_FEMALE_VOICE = 'Japanese_CalmLady' as const
+export const DEFAULT_MINIMAX_MALE_VOICE = 'Japanese_GentleButler' as const
+
+export const MINIMAX_ENDPOINTS = {
+  china: 'https://api.minimaxi.com/v1/t2a_v2',
+  global: 'https://api.minimax.io/v1/t2a_v2',
+} as const
+
+export const MINIMAX_MODELS = ['speech-2.8-hd', 'speech-2.8-turbo'] as const
+
+export const MINIMAX_FEMALE_VOICES = [
+  'Japanese_CalmLady',
+  'Japanese_KindLady',
+  'Japanese_DependableWoman',
+  'Japanese_GracefulMaiden',
+  'Japanese_DecisivePrincess',
+  'Japanese_ColdQueen',
+] as const
+
+export const MINIMAX_MALE_VOICES = [
+  'Japanese_GentleButler',
+  'Japanese_IntellectualSenior',
+  'Japanese_LoyalKnight',
+  'Japanese_DominantMan',
+  'Japanese_SeriousCommander',
+  'Japanese_OptimisticYouth',
+  'Japanese_GenerousIzakayaOwner',
+  'Japanese_SportyStudent',
+  'Japanese_InnocentBoy',
+] as const
+
+export const MINIMAX_TIMEOUT_MS = 30_000
+
 export const OBSIDIAN_DIRS = {
   root: 'Japanese',
   words: 'Words',

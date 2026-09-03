@@ -1,12 +1,26 @@
-import { DEFAULT_RESPONSE_LANGUAGE } from '@shared/constants'
+import { DEFAULT_RESPONSE_LANGUAGE, MINIMAX_ENDPOINTS } from '@shared/constants'
 import { ProviderError } from '@shared/errors'
-import { normalizeVoiceGender } from '@shared/tts'
-import type { PublicSettings, SettingsUpdate, VoiceGender } from '@shared/types'
+import {
+  normalizeMiniMaxFemaleVoice,
+  normalizeMiniMaxMaleVoice,
+  normalizeMiniMaxModel,
+  normalizeMiniMaxRegion,
+  normalizeTtsProvider,
+  normalizeVoiceGender,
+} from '@shared/tts'
+import type {
+  MiniMaxRegion,
+  PublicSettings,
+  SettingsUpdate,
+  TTSProviderKind,
+  VoiceGender,
+} from '@shared/types'
 import type { AppRepositories } from '../database/repositories'
 import type { SafeStorageAdapter } from './safe-storage'
 
 const SETTINGS_KEY = 'app'
 const AI_SESSION_KEY = 'aiApiKey'
+const MINIMAX_SESSION_KEY = 'minimaxApiKey'
 
 interface EncryptedSecret {
   kind: 'encrypted'
@@ -18,12 +32,28 @@ interface PersistedSettings {
   aiModel: string
   aiApiKey?: EncryptedSecret
   voiceGender: VoiceGender
+  ttsProvider: TTSProviderKind
+  minimaxRegion: MiniMaxRegion
+  minimaxModel: string
+  minimaxFemaleVoice: string
+  minimaxMaleVoice: string
+  minimaxApiKey?: EncryptedSecret
   obsidianVaultPath: string
   responseLanguage: 'zh-CN'
 }
 
 export interface ResolvedSecrets {
   aiApiKey?: string
+  minimaxApiKey?: string
+}
+
+export interface MiniMaxTtsConfig {
+  endpoint: string
+  region: MiniMaxRegion
+  model: string
+  femaleVoice: string
+  maleVoice: string
+  apiKey: string
 }
 
 export class SettingsService {
@@ -43,6 +73,13 @@ export class SettingsService {
       aiModel: stored.aiModel,
       hasAiApiKey: Boolean(stored.aiApiKey) || this.sessionSecrets.has(AI_SESSION_KEY),
       voiceGender: stored.voiceGender,
+      ttsProvider: stored.ttsProvider,
+      minimaxRegion: stored.minimaxRegion,
+      minimaxModel: stored.minimaxModel,
+      minimaxFemaleVoice: stored.minimaxFemaleVoice,
+      minimaxMaleVoice: stored.minimaxMaleVoice,
+      hasMinimaxApiKey:
+        Boolean(stored.minimaxApiKey) || this.sessionSecrets.has(MINIMAX_SESSION_KEY),
       obsidianVaultPath: stored.obsidianVaultPath,
       responseLanguage: stored.responseLanguage,
       encryptionAvailable,
@@ -59,6 +96,12 @@ export class SettingsService {
       aiModel: update.aiModel.trim(),
       aiApiKey: stored.aiApiKey,
       voiceGender: normalizeVoiceGender(update.voiceGender),
+      ttsProvider: normalizeTtsProvider(update.ttsProvider),
+      minimaxRegion: normalizeMiniMaxRegion(update.minimaxRegion),
+      minimaxModel: normalizeMiniMaxModel(update.minimaxModel),
+      minimaxFemaleVoice: normalizeMiniMaxFemaleVoice(update.minimaxFemaleVoice),
+      minimaxMaleVoice: normalizeMiniMaxMaleVoice(update.minimaxMaleVoice),
+      minimaxApiKey: stored.minimaxApiKey,
       obsidianVaultPath: update.obsidianVaultPath.trim(),
       responseLanguage: update.responseLanguage || DEFAULT_RESPONSE_LANGUAGE,
     }
@@ -71,6 +114,14 @@ export class SettingsService {
         next.aiApiKey = secret
       },
     })
+    this.applySecret({
+      incoming: update.minimaxApiKey,
+      clear: update.clearMinimaxApiKey,
+      sessionKey: MINIMAX_SESSION_KEY,
+      assign: (secret) => {
+        next.minimaxApiKey = secret
+      },
+    })
 
     this.repos.putSetting(SETTINGS_KEY, next, this.now().toISOString())
     return this.getPublic()
@@ -80,6 +131,7 @@ export class SettingsService {
     const stored = this.read()
     return {
       aiApiKey: this.readSecret(stored.aiApiKey, AI_SESSION_KEY),
+      minimaxApiKey: this.readSecret(stored.minimaxApiKey, MINIMAX_SESSION_KEY),
     }
   }
 
@@ -97,6 +149,22 @@ export class SettingsService {
       baseUrl: publicSettings.aiBaseUrl,
       model: publicSettings.aiModel,
       apiKey: secrets.aiApiKey,
+    }
+  }
+
+  requireMinimaxTtsConfig(): MiniMaxTtsConfig {
+    const publicSettings = this.getPublic()
+    const secrets = this.resolveSecrets()
+    if (!secrets.minimaxApiKey) {
+      throw new ProviderError('configuration', '请先在设置中填写 MiniMax API Key。', false)
+    }
+    return {
+      endpoint: MINIMAX_ENDPOINTS[publicSettings.minimaxRegion],
+      region: publicSettings.minimaxRegion,
+      model: publicSettings.minimaxModel,
+      femaleVoice: publicSettings.minimaxFemaleVoice,
+      maleVoice: publicSettings.minimaxMaleVoice,
+      apiKey: secrets.minimaxApiKey,
     }
   }
 
@@ -150,6 +218,12 @@ export class SettingsService {
       aiModel: value?.aiModel ?? '',
       aiApiKey: value?.aiApiKey,
       voiceGender: normalizeVoiceGender(value?.voiceGender),
+      ttsProvider: normalizeTtsProvider(value?.ttsProvider),
+      minimaxRegion: normalizeMiniMaxRegion(value?.minimaxRegion),
+      minimaxModel: normalizeMiniMaxModel(value?.minimaxModel),
+      minimaxFemaleVoice: normalizeMiniMaxFemaleVoice(value?.minimaxFemaleVoice),
+      minimaxMaleVoice: normalizeMiniMaxMaleVoice(value?.minimaxMaleVoice),
+      minimaxApiKey: value?.minimaxApiKey,
       obsidianVaultPath: value?.obsidianVaultPath ?? '',
       responseLanguage: value?.responseLanguage ?? DEFAULT_RESPONSE_LANGUAGE,
     }

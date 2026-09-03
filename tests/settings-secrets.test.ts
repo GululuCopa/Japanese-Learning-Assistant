@@ -1,18 +1,11 @@
 import fs from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { createTestApp } from './helpers/app'
+import { createTestApp, testSettings } from './helpers/app'
 
 describe('settings secret persistence', () => {
   it('stores encrypted keys and never returns them to the renderer', () => {
     const app = createTestApp()
-    const saved = app.settings.save({
-      aiBaseUrl: 'https://example.test/v1',
-      aiModel: 'gpt-test',
-      aiApiKey: 'sk-secret-ai',
-      voiceGender: 'female',
-      obsidianVaultPath: '',
-      responseLanguage: 'zh-CN',
-    })
+    const saved = app.settings.save(testSettings({ aiApiKey: 'sk-secret-ai' }))
     expect(saved.hasAiApiKey).toBe(true)
     expect(saved.voiceGender).toBe('female')
     expect(JSON.stringify(saved)).not.toContain('sk-secret')
@@ -25,14 +18,7 @@ describe('settings secret persistence', () => {
 
   it('keeps keys session-only when OS encryption is unavailable', () => {
     const app = createTestApp({ encryption: false })
-    const saved = app.settings.save({
-      aiBaseUrl: 'https://example.test/v1',
-      aiModel: 'gpt-test',
-      aiApiKey: 'sk-session-only',
-      voiceGender: 'female',
-      obsidianVaultPath: '',
-      responseLanguage: 'zh-CN',
-    })
+    const saved = app.settings.save(testSettings({ aiApiKey: 'sk-session-only' }))
     expect(saved.encryptionAvailable).toBe(false)
     expect(saved.encryptionWarning).toMatch(/本次会话/)
     expect(saved.hasAiApiKey).toBe(true)

@@ -6,6 +6,7 @@ import type { ExportResult, NoteKind, NoteRecord } from '@shared/types'
 import type { AppRepositories } from '../database/repositories'
 import {
   asPathApi,
+  isPathInside,
   resolveUnderVault,
   sanitizeWindowsFileName,
   uniqueRelPath,
@@ -57,6 +58,31 @@ export class ObsidianExporter {
       }
     } catch (error) {
       return { ok: false, message: exportErrorMessage(error) }
+    }
+  }
+
+  deleteExportedMarkdown(note: NoteRecord, vaultPath: string): boolean {
+    if (!note.exportRelPath) return false
+    const vault = this.requireVault(vaultPath)
+    const relParts = parseRecordedExportPath(note)
+    const abs = resolveUnderVault(vault, relParts, this.pathApi)
+    assertParentInsideRealVault(vault, abs, this.pathApi)
+    try {
+      const stat = fs.lstatSync(abs)
+      if (stat.isDirectory()) {
+        throw new Error('Obsidian 导出路径指向文件夹，已阻止删除。')
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+      if (error instanceof Error && error.message.includes('文件夹')) throw error
+      throw wrapDeleteFs(error)
+    }
+    try {
+      fs.unlinkSync(abs)
+      return true
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+      throw wrapDeleteFs(error)
     }
   }
 
@@ -133,6 +159,42 @@ export class ObsidianExporter {
       }
     }
   }
+}
+
+function parseRecordedExportPath(note: NoteRecord): string[] {
+  const parts = note.exportRelPath?.split(/[\\/]+/).filter((part) => part.length > 0) ?? []
+  const expectedFolder = folderFor(note.kind)
+  const fileName = parts[2]
+  if (
+    parts.length !== 3 ||
+    parts[0] !== OBSIDIAN_DIRS.root ||
+    parts[1] !== expectedFolder ||
+    !fileName ||
+    !fileName.endsWith('.md') ||
+    fileName === '.md' ||
+    parts.some((part) => part === '.' || part === '..' || part.includes('\0'))
+  ) {
+    throw new Error('Obsidian 导出路径无效，已阻止删除以免误删文件。')
+  }
+  return parts
+}
+
+function assertParentInsideRealVault(vault: string, abs: string, pathApi: PathApi): void {
+  const parent = pathApi.dirname(abs)
+  if (!fs.existsSync(parent)) return
+  const vaultReal = fs.realpathSync(vault)
+  const parentReal = fs.realpathSync(parent)
+  if (!isPathInside(vaultReal, parentReal, pathApi) && pathApi.resolve(vaultReal) !== parentReal) {
+    throw new Error('导出路径必须位于所选 Obsidian 仓库内')
+  }
+}
+
+function wrapDeleteFs(error: unknown): Error {
+  const code = (error as NodeJS.ErrnoException).code
+  if (code === 'EACCES' || code === 'EPERM' || code === 'EROFS') {
+    return new Error('没有删除 Obsidian 文件的权限。请检查当前 Vault 文件夹权限后重试。')
+  }
+  return error instanceof Error ? error : new Error('无法删除 Obsidian 文件。')
 }
 
 function folderFor(kind: NoteKind): string {

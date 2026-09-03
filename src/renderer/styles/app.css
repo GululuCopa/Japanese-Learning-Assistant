@@ -328,6 +328,11 @@ textarea {
   margin: 0;
 }
 
+.tts-minimax {
+  display: grid;
+  gap: 12px;
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -350,7 +355,8 @@ fieldset label {
 }
 
 input[type='text'],
-input[type='password'] {
+input[type='password'],
+select {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;

@@ -47,7 +47,7 @@ export function registerIpc(ipcMain: IpcMain, services: AppServices): void {
   })
   ipcMain.handle(IPC_CHANNELS.notesDelete, (_event, raw) => {
     const { id } = idSchema.parse(raw)
-    services.notes.delete(id)
+    return services.deleteNote(id)
   })
   ipcMain.handle(IPC_CHANNELS.notesExport, (_event, raw) => {
     const { id } = idSchema.parse(raw)

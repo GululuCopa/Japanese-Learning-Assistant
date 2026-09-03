@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createTestApp } from './helpers/app'
+import { createTestApp, testSettings } from './helpers/app'
 
 describe('voice gender settings', () => {
   it('defaults to female and persists male/female', () => {
     const app = createTestApp()
     expect(app.settings.getPublic().voiceGender).toBe('female')
-    const male = app.settings.save({
-      aiBaseUrl: 'https://example.test/v1',
-      aiModel: 'gpt-test',
-      voiceGender: 'male',
-      obsidianVaultPath: '',
-      responseLanguage: 'zh-CN',
-    })
+    const male = app.settings.save(testSettings({ voiceGender: 'male' }))
     expect(male.voiceGender).toBe('male')
     expect(app.settings.getPublic().voiceGender).toBe('male')
     app.close()
@@ -39,13 +33,12 @@ describe('voice gender settings', () => {
     expect(JSON.stringify(publicSettings)).not.toContain('alloy')
     expect(JSON.stringify(publicSettings)).not.toContain('sk-secret')
     expect(JSON.stringify(publicSettings)).not.toMatch(/ttsBaseUrl|hasTtsApiKey|ttsApiKey/)
-    const saved = first.settings.save({
-      aiBaseUrl: publicSettings.aiBaseUrl,
-      aiModel: publicSettings.aiModel,
-      voiceGender: 'female',
-      obsidianVaultPath: '',
-      responseLanguage: 'zh-CN',
-    })
+    const saved = first.settings.save(
+      testSettings({
+        aiBaseUrl: publicSettings.aiBaseUrl,
+        aiModel: publicSettings.aiModel,
+      }),
+    )
     expect(saved.voiceGender).toBe('female')
     first.close()
   })

@@ -18,6 +18,7 @@ export function NotesPage() {
   const [selected, setSelected] = useState<NoteRecord | null>(null)
   const [pendingDelete, setPendingDelete] = useState<NoteRecord | null>(null)
   const [exportMessage, setExportMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function refresh(nextKind = kind, nextQuery = query) {
@@ -84,6 +85,7 @@ export function NotesPage() {
           搜索
         </button>
       </form>
+      {errorMessage ? <StatusBanner tone="error">{errorMessage}</StatusBanner> : null}
       {exportMessage ? <StatusBanner>{exportMessage}</StatusBanner> : null}
       {loading ? <p className="muted">加载中…</p> : null}
       {!loading && notes.length === 0 ? <div className="empty">没有找到笔记。</div> : null}
@@ -112,6 +114,7 @@ export function NotesPage() {
               className="primary"
               onClick={async () => {
                 const result = await api.notes.exportToObsidian(selected.id)
+                setErrorMessage('')
                 setExportMessage(result.message)
               }}
             >
@@ -126,13 +129,23 @@ export function NotesPage() {
       {pendingDelete ? (
         <ConfirmDialog
           title="删除笔记"
-          message={`确定删除「${pendingDelete.title}」吗？此操作不可恢复。`}
+          message={`确定删除「${pendingDelete.title}」吗？如果该笔记已导出，当前配置的 Obsidian Vault 中对应的 Markdown 文件也会被删除。此操作不可恢复。`}
           onCancel={() => setPendingDelete(null)}
-          onConfirm={async () => {
-            await api.notes.delete(pendingDelete.id)
-            setPendingDelete(null)
-            setSelected(null)
-            await refresh()
+          onConfirm={() => {
+            void (async () => {
+              try {
+                const result = await api.notes.delete(pendingDelete.id)
+                setPendingDelete(null)
+                setSelected(null)
+                setErrorMessage('')
+                setExportMessage(result.message)
+                await refresh()
+              } catch (error) {
+                setPendingDelete(null)
+                setExportMessage('')
+                setErrorMessage(error instanceof Error ? error.message : '删除失败')
+              }
+            })()
           }}
         />
       ) : null}

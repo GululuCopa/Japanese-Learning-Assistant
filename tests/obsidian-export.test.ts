@@ -2,20 +2,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { kamauAnalysis, miniPngImage } from './fixtures/prd-cases'
-import { createTestApp, tempDir } from './helpers/app'
+import { createTestApp, tempDir, testSettings } from './helpers/app'
 
 describe('Obsidian export', () => {
   it('exports 構う.md with YAML and a screenshot embed', async () => {
     const app = createTestApp({ analysis: kamauAnalysis })
     const vault = tempDir('jla-vault-')
-    app.settings.save({
-      aiBaseUrl: 'https://example.test/v1',
-      aiModel: 'gpt-test',
-      aiApiKey: 'sk-test',
-      voiceGender: 'female',
-      obsidianVaultPath: vault,
-      responseLanguage: 'zh-CN',
-    })
+    app.settings.save(testSettings({ aiApiKey: 'sk-test', obsidianVaultPath: vault }))
     const conversation = app.conversations.create()
     const sent = await app.conversations.send({
       conversationId: conversation.id,

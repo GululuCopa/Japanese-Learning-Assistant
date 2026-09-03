@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import type { AIProvider, TTSProvider } from '@shared/contracts'
 import type {
   AttachmentBytes,
+  DeleteNoteResult,
   ExportResult,
   ListNotesInput,
   PublicSettings,
@@ -22,6 +23,7 @@ import { ObsidianExporter } from './obsidian/export'
 import { createAppPaths, type AppPaths } from './paths'
 import { SettingsService } from './settings/service'
 import type { SafeStorageAdapter } from './settings/safe-storage'
+import { MiniMaxTTSProvider } from './tts/minimax'
 import { SystemTTSProvider } from './tts/system'
 
 export interface AppServiceOptions {
@@ -89,6 +91,15 @@ export class AppServices {
 
   async createTTSProvider(): Promise<TTSProvider> {
     if (this.ttsOverride) return this.ttsOverride
+    const publicSettings = this.settings.getPublic()
+    if (publicSettings.ttsProvider === 'minimax') {
+      const config = this.settings.requireMinimaxTtsConfig()
+      return new MiniMaxTTSProvider({
+        ...config,
+        cacheDir: this.paths.audioCacheDir,
+        fetchImpl: this.fetchImpl,
+      })
+    }
     return new SystemTTSProvider({
       cacheDir: this.paths.audioCacheDir,
     })
@@ -102,7 +113,7 @@ export class AppServices {
     const provider = await this.createTTSProvider()
     const result = await provider.speak(input.text, {
       speed: input.speed,
-      voiceGender: this.settings.getPublic().voiceGender,
+      voiceGender: input.voiceGender ?? this.settings.getPublic().voiceGender,
     })
     return {
       mimeType: result.mimeType,
@@ -122,6 +133,27 @@ export class AppServices {
   exportNote(id: string): ExportResult {
     const vault = this.settings.getPublic().obsidianVaultPath
     return this.exporter.exportNote(id, vault)
+  }
+
+  deleteNote(id: string): DeleteNoteResult {
+    const note = this.notes.get(id)
+    let obsidianFileDeleted = false
+    if (note.exportRelPath) {
+      obsidianFileDeleted = this.exporter.deleteExportedMarkdown(
+        note,
+        this.settings.getPublic().obsidianVaultPath,
+      )
+    }
+    this.notes.delete(id)
+    return {
+      ok: true,
+      obsidianFileDeleted,
+      message: obsidianFileDeleted
+        ? `已删除笔记，并移除当前 Vault 中的 ${note.exportRelPath}`
+        : note.exportRelPath
+          ? '已删除笔记。Obsidian 中的导出文件已不存在。'
+          : '已删除笔记。',
+    }
   }
 
   async sendMessage(input: SendMessageInput) {
