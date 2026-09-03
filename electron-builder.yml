@@ -11,14 +11,6 @@ asar: true
 asarUnpack:
   - '**/*.node'
   - '**/better-sqlite3/**'
-  - '**/kokoro/**'
-extraResources:
-  - from: resources/kokoro
-    to: kokoro
-    filter:
-      - launch.ps1
-      - launch.sh
-      - README.md
 # better-sqlite3 13 ships N-API prebuilds; rebuilding from source cannot
 # cross-compile Windows natives on macOS and is unnecessary for Electron 44.
 npmRebuild: false

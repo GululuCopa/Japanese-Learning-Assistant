@@ -4,7 +4,6 @@ import path from 'node:path'
 import type { AIProvider, TTSProvider } from '../../src/shared/contracts'
 import type { JapaneseAnalysis } from '../../src/shared/types'
 import { createAppServices, type AppServices } from '../../src/main/app-services'
-import type { KokoroRuntimeDeps } from '../../src/main/tts/kokoro-runtime'
 import {
   createMemorySafeStorage,
   createUnavailableSafeStorage,
@@ -28,7 +27,6 @@ export function createTestApp(options?: {
   encryption?: boolean
   fetchImpl?: typeof fetch
   userDataDir?: string
-  kokoro?: Partial<KokoroRuntimeDeps>
 }): AppServices {
   const userDataDir = options?.userDataDir ?? tempDir()
   return createAppServices({
@@ -38,9 +36,5 @@ export function createTestApp(options?: {
     aiProvider: options?.aiProvider ?? fixtureAI(options?.analysis),
     ttsProvider: options?.ttsProvider,
     fetchImpl: options?.fetchImpl,
-    kokoro: {
-      fileExists: () => false,
-      ...options?.kokoro,
-    },
   })
 }

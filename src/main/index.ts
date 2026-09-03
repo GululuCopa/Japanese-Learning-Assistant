@@ -43,9 +43,6 @@ app.whenReady().then(() => {
   services = createAppServices({
     userDataDir: app.getPath('userData'),
     safeStorage: createElectronSafeStorage(safeStorage),
-    appRoot: app.getAppPath(),
-    resourcesPath: process.resourcesPath,
-    isPackaged: app.isPackaged,
   })
   console.log('JLA_STARTUP_DB_OK')
   registerIpc(ipcMain, services)

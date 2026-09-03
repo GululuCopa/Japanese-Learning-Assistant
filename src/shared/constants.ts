@@ -9,14 +9,7 @@ export const DEFAULT_RESPONSE_LANGUAGE = 'zh-CN'
 
 export const DEFAULT_VOICE_GENDER = 'female' as const
 
-export const KOKORO_MODEL = 'kokoro'
-export const KOKORO_HOST = '127.0.0.1'
-export const KOKORO_PREFERRED_PORT = 8880
-export const KOKORO_PORT_FALLBACKS = 10
-export const KOKORO_VOICES = {
-  female: 'jf_alpha',
-  male: 'jm_kumo',
-} as const
+export const SYSTEM_TTS_TEST_TEXT = 'こんにちは。これは発音テストです。'
 
 export const OBSIDIAN_DIRS = {
   root: 'Japanese',

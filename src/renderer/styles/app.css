@@ -323,6 +323,11 @@ textarea {
   max-width: 640px;
 }
 
+.tts-error {
+  color: var(--danger);
+  margin: 0;
+}
+
 label {
   display: grid;
   gap: 6px;

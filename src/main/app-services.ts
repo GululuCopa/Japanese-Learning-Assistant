@@ -22,8 +22,7 @@ import { ObsidianExporter } from './obsidian/export'
 import { createAppPaths, type AppPaths } from './paths'
 import { SettingsService } from './settings/service'
 import type { SafeStorageAdapter } from './settings/safe-storage'
-import { KokoroTTSProvider } from './tts/kokoro-provider'
-import { KokoroRuntime, type KokoroRuntimeDeps } from './tts/kokoro-runtime'
+import { SystemTTSProvider } from './tts/system'
 
 export interface AppServiceOptions {
   userDataDir: string
@@ -34,10 +33,6 @@ export interface AppServiceOptions {
   aiProvider?: AIProvider
   ttsProvider?: TTSProvider
   selectDirectory?: () => Promise<string | null>
-  kokoro?: Partial<KokoroRuntimeDeps>
-  appRoot?: string
-  resourcesPath?: string
-  isPackaged?: boolean
 }
 
 export class AppServices {
@@ -49,7 +44,6 @@ export class AppServices {
   readonly conversations: ConversationService
   readonly attachments: AttachmentStore
   readonly exporter: ObsidianExporter
-  readonly kokoro: KokoroRuntime
   private readonly fetchImpl?: typeof fetch
   private readonly ttsOverride?: TTSProvider
   readonly selectDirectory?: () => Promise<string | null>
@@ -74,14 +68,6 @@ export class AppServices {
     this.fetchImpl = options.fetchImpl
     this.ttsOverride = options.ttsProvider
     this.selectDirectory = options.selectDirectory
-    this.kokoro = new KokoroRuntime({
-      userDataDir: this.paths.userDataDir,
-      appRoot: options.appRoot ?? process.cwd(),
-      resourcesPath: options.resourcesPath,
-      isPackaged: options.isPackaged,
-      fetchImpl: options.fetchImpl,
-      ...options.kokoro,
-    })
     this.conversations = new ConversationService(
       this.repos,
       this.attachments,
@@ -103,12 +89,8 @@ export class AppServices {
 
   async createTTSProvider(): Promise<TTSProvider> {
     if (this.ttsOverride) return this.ttsOverride
-    const ready = await this.kokoro.ensureReady()
-    return new KokoroTTSProvider({
-      baseUrl: ready.baseUrl,
-      voiceGender: this.settings.getPublic().voiceGender,
+    return new SystemTTSProvider({
       cacheDir: this.paths.audioCacheDir,
-      fetchImpl: this.fetchImpl,
     })
   }
 
@@ -159,7 +141,6 @@ export class AppServices {
   }
 
   close(): void {
-    this.kokoro.stop()
     this.db.close()
   }
 }

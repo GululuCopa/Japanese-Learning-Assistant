@@ -6,6 +6,8 @@ import { ApiProvider } from '../../src/renderer/state/api'
 import { createFakeApi } from '../helpers/fake-api'
 
 HTMLMediaElement.prototype.play = vi.fn(async () => undefined)
+URL.createObjectURL = vi.fn(() => 'blob:jla-tts-test')
+URL.revokeObjectURL = vi.fn()
 
 describe('renderer interactions', () => {
   it('sends Japanese text, renders analysis, and saves 構う', async () => {
@@ -53,8 +55,9 @@ describe('renderer interactions', () => {
     expect(screen.queryByLabelText(/TTS API Key/)).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '女声' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '男声' })).toBeInTheDocument()
-    expect(screen.getByText(/需安装 runtime\/model|需自行安装 runtime/)).toBeInTheDocument()
-    expect(screen.queryByText(/无需填写远程 TTS 地址/)).not.toBeNull()
+    expect(screen.getByRole('button', { name: '测试发音' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '一键安装语音引擎' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Windows \/ macOS 日语系统语音/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '历史' }))
     expect(screen.queryByRole('button', { name: '新对话' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /9\/1\/2026/ })).toBeInTheDocument()
@@ -89,6 +92,29 @@ describe('renderer interactions', () => {
     expect(screen.getByLabelText('消息输入')).toHaveValue('')
     releaseSend()
     expect(await screen.findByText('おれに かまうな')).toBeInTheDocument()
+  })
+
+  it('plays analysis-card pronunciation at the requested renderer speed', async () => {
+    const user = userEvent.setup()
+    const { api } = createFakeApi()
+    render(
+      <ApiProvider api={api}>
+        <App />
+      </ApiProvider>,
+    )
+    await user.type(await screen.findByLabelText('消息输入'), '俺に構うな')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    expect(await screen.findByText('おれに かまうな')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '俺に構うな 0.75 倍速发音' }))
+    await waitFor(() =>
+      expect(api.tts.speak).toHaveBeenCalledWith({ text: '俺に構うな', speed: 0.75 }),
+    )
+    await user.click(screen.getByRole('button', { name: '俺に構うな 1.0 倍速发音' }))
+    await waitFor(() =>
+      expect(api.tts.speak).toHaveBeenCalledWith({ text: '俺に構うな', speed: 1 }),
+    )
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
   })
 
   it('keeps a failed outgoing message visible with retry', async () => {

@@ -18,7 +18,7 @@ Obsidian 笔记沉淀
 
 本项目基于 Electron + React + TypeScript 构建，支持 **Windows 10/11 x64**，也支持在 **macOS** 上开发和运行。
 
-> 当前版本为 V0.1。AI 分析使用 OpenAI-compatible API；本地发音使用 Kokoro-FastAPI-compatible 引擎，但仓库不包含 Kokoro 模型和运行时，详见 [本地 Kokoro 发音](#本地-kokoro-发音)。
+> 当前版本为 V0.1。AI 分析使用 OpenAI-compatible API；发音使用 Windows / macOS 已安装的日语系统语音，无需下载模型、启动本地引擎或填写 TTS API Key。详见 [系统日语发音](#系统日语发音)。
 
 ## 项目目标
 
@@ -57,12 +57,14 @@ Obsidian 笔记沉淀
 - 学习重点
 - AI 推荐收藏项
 
-### 3. 本地日语发音
+### 3. 系统日语发音
 
-- 支持女声和男声两个选项。
-- 支持 `0.75x` 和 `1.0x` 播放速度。
-- 音频结果会缓存，重复播放相同内容时可以减少重复请求。
-- 发音请求通过主进程访问本机回环地址，不向 renderer 暴露 Node.js 或文件系统能力。
+- 使用操作系统自带的日语语音：macOS 的 `say`，Windows 的系统 Speech API。
+- 支持女声和男声两个偏好；若对应性别的日语语音不可用，会回退到已安装的任意日语系统语音。
+- 支持 `0.75x` 和 `1.0x` 播放速度（生成一份常速音频，由播放器调整倍速）。
+- 音频结果会缓存，重复播放相同文本和音色时不会再次合成。
+- 仅在用户点击发音时生成音频，不启动常驻服务、容器或 Python runtime。
+- 发音在主进程完成，不向 renderer 暴露 Node.js 或文件系统能力。
 
 ### 4. 收藏和笔记
 
@@ -104,7 +106,7 @@ src/
 │   ├── conversation/        对话和消息服务
 │   ├── database/            better-sqlite3 数据访问
 │   ├── notes/               收藏、笔记和 Obsidian 导出
-│   └── tts/                 Kokoro runtime 与 TTS provider
+│   └── tts/                 系统 TTS provider（Windows / macOS）
 ├── preload/                 contextIsolation 下的类型化安全桥接
 ├── renderer/                React 页面和组件
 └── shared/                  类型、schema、错误和 provider contract
@@ -149,8 +151,9 @@ npm run dev
 1. 打开“设置”。
 2. 填写 AI 接口地址、模型和 API Key。
 3. 选择女声或男声。
-4. 回到“对话”。
-5. 输入日语或拖入图片后发送。
+4. 确认操作系统已安装日语系统语音；可在设置页点击“测试发音”。
+5. 回到“对话”。
+6. 输入日语或拖入图片后发送。
 
 AI API Key 会保存在 Electron 的应用数据目录中，不会显示在 renderer，也不会写入日志。
 
@@ -166,42 +169,27 @@ AI API Key 会保存在 Electron 的应用数据目录中，不会显示在 rend
 
 项目不会在 README、`.env` 或前端代码中保存真实 API Key。开发环境可以参考 `.env.example`，但正式 Key 应通过应用设置保存。
 
-## 本地 Kokoro 发音
+## 系统日语发音
 
-当前仓库只提供 Kokoro 启动钩子，不包含模型权重、Python 虚拟环境或完整 Kokoro-FastAPI checkout。仓库中的文件只有：
+发音使用操作系统已安装的日语系统语音，**不需要**容器、Python、本地模型下载或 TTS API Key。点击分析卡片上的 `0.75x` / `1.0x`，或设置页的「测试发音」时才会合成音频。
 
-```text
-resources/kokoro/launch.ps1
-resources/kokoro/launch.sh
-resources/kokoro/README.md
-```
+### macOS
 
-需要额外安装一个 Kokoro-FastAPI-compatible runtime，并将其放在以下位置之一：
+1. 打开 **系统设置 → 辅助功能 → 朗读内容 → 系统声音**（或「语音」），下载日语语音。
+2. 常见女声包括 Kyoko、Flo、Sandy、Shelley、Grandma；男声包括 Otoya、Eddy、Reed、Rocko、Grandpa。至少安装一种日语（`ja_JP`）语音即可。
+3. 应用通过 `/usr/bin/say` 合成，再用 `/usr/bin/afconvert` 转为 WAV。
 
-1. 开发者覆盖路径：`JLA_KOKORO_BIN` 指向绝对路径可执行文件。
-2. 打包应用的 `resources/kokoro/` 目录。
-3. Windows：`%APPDATA%\Japanese Learning Assistant\kokoro-runtime\`。
-4. macOS：Electron `userData/kokoro-runtime/`。
-5. 开发目录：`resources/kokoro/`，放入 `start-cpu.ps1`、`start-cpu.sh` 或对应 Python venv。
+若提示未找到 macOS 日语系统语音，请先在系统设置中下载日语语音后重试。
 
-开发者可使用以下环境变量：
+### Windows 10/11 x64
 
-```text
-JLA_KOKORO_BIN=/absolute/path/to/kokoro-launcher
-JLA_KOKORO_ARGS=["--flag"]
-JLA_KOKORO_RUNTIME=/absolute/path/to/runtime-dir
-JLA_KOKORO_PORT=8880
-```
+1. 打开 **设置 → 时间和语言 → 语言和区域**，添加日语语言包。
+2. 在 **设置 → 时间和语言 → 语音** 中确认已安装日语语音。
+3. 应用通过 Windows PowerShell 调用 `.NET System.Speech.Synthesis` 生成 WAV。
 
-这些变量只由主进程读取，不接受 renderer 传入的进程路径。
+若提示未找到 Windows 日语系统语音，请先安装日语语音包后重试。
 
-如果没有安装 Kokoro runtime/model：
-
-- AI 分析功能仍然可以使用。
-- 点击发音时会快速显示安装提示。
-- 不会再等待约 20 秒后才显示模糊的启动超时错误。
-
-真正实现“开箱即用”的 TTS 还需要单独提供分平台 runtime/model 下载、进度显示、完整性校验和许可声明；大型模型文件不会提交到 Git 仓库。
+Linux 当前不支持系统发音，会返回明确错误，不会崩溃。AI 分析在未安装日语语音时仍可使用。
 
 ## 数据位置
 
@@ -213,7 +201,6 @@ JLA_KOKORO_PORT=8880
 %APPDATA%\Japanese Learning Assistant\japanese-assistant.sqlite
 %APPDATA%\Japanese Learning Assistant\attachments\
 %APPDATA%\Japanese Learning Assistant\audio-cache\
-%APPDATA%\Japanese Learning Assistant\kokoro-runtime\
 ```
 
 ### macOS
@@ -222,8 +209,9 @@ JLA_KOKORO_PORT=8880
 ~/Library/Application Support/Japanese Learning Assistant/japanese-assistant.sqlite
 ~/Library/Application Support/Japanese Learning Assistant/attachments/
 ~/Library/Application Support/Japanese Learning Assistant/audio-cache/
-~/Library/Application Support/Japanese Learning Assistant/kokoro-runtime/
 ```
+
+如果以前安装过本地 Kokoro runtime，目录 `userData/kokoro-runtime/` 可能仍然存在。当前版本不会读取或自动删除它。确认不再需要后，可以手动删除以释放磁盘空间。
 
 ## 常用命令
 
@@ -240,7 +228,7 @@ JLA_KOKORO_PORT=8880
 
 ## 测试
 
-自动化测试使用 mock HTTP，不需要真实 AI API Key，也不需要启动 Kokoro：
+自动化测试使用 mock HTTP 和注入的命令执行器，不需要真实 AI API Key，也不需要联网下载语音模型：
 
 ```bash
 npm ci
@@ -259,8 +247,8 @@ npm run build
 - Tab 切换期间的图片分析连续性
 - 收藏 payload 和严格 IPC 校验
 - 图片选择、保存、读取和渲染
-- Kokoro runtime 生命周期和缺失 runtime 预检
-- TTS provider、设置安全存储和 Obsidian 导出
+- 系统 TTS provider（macOS say/afconvert、Windows Speech、缓存与错误提示）
+- 设置安全存储和 Obsidian 导出
 - Windows/macOS 路径安全与 Electron 窗口安全配置
 
 ## 打包和发布
@@ -292,7 +280,7 @@ npm run package:dir
 
 当前构建配置支持 macOS arm64 的 unpacked 目录，未配置代码签名。
 
-由于 `better-sqlite3`、Electron 和 Kokoro runtime 存在平台差异，不建议在 macOS 上直接交叉构建 Windows 安装包；Windows 官方安装包应通过 Windows CI 或 Windows 机器生成。
+由于 `better-sqlite3` 和 Electron 存在平台差异，不建议在 macOS 上直接交叉构建 Windows 安装包；Windows 官方安装包应通过 Windows CI 或 Windows 机器生成。
 
 ## 故障排查
 
@@ -304,18 +292,19 @@ npm run package:dir
 - 在读取失败时显示错误提示。
 - 防止旧的异步请求覆盖当前历史会话。
 
-### 发音提示 Kokoro runtime/model 缺失
+### 发音提示未找到日语系统语音
 
-请先按照[本地 Kokoro 发音](#本地-kokoro-发音)安装完整 runtime 和日语模型，然后重新点击发音。
+- **macOS**：在系统设置中下载日语语音后重试。
+- **Windows**：在语言设置中安装日语语音包后重试。
+- **Linux**：当前版本不支持系统发音。
 
-### 发音启动超时
+### 发音生成超时或失败
 
-这表示已经找到并启动了 runtime，但 `/health` 或 `/v1/models` 没有在超时时间内变为可用。请检查：
+系统语音命令可能被策略拦截、超时或返回空音频。请确认：
 
-- Python 环境是否完整。
-- 模型文件是否安装。
-- runtime 是否支持 CPU 启动。
-- `JLA_KOKORO_PORT` 配置的端口是否被占用。
+- macOS 上 `/usr/bin/say` 与 `/usr/bin/afconvert` 可用，并且已安装 `ja_JP` 语音。
+- Windows 上 PowerShell 可用，并且已启用日语系统语音。
+- 朗读文本不是空字符串。
 
 ### macOS 的 IMK/TSM 日志
 
@@ -331,9 +320,9 @@ TSM AdjustCapsLockLEDForKeyTransitionHandling
 ## 当前限制
 
 - 需要用户提供 OpenAI-compatible AI API 和 API Key。
-- 仓库不包含 Kokoro 模型与完整 runtime，因此首次使用发音前需要额外安装。
+- 发音依赖操作系统已安装的日语系统语音；Linux 不支持。
 - Windows 安装包目前未签名。
-- 自动化测试不会调用真实 AI、真实 Kokoro 或真实 Obsidian。
+- 自动化测试不会调用真实 AI、真实 Windows 系统语音或真实 Obsidian。
 - 项目当前重点是日语文本/截图理解，不包含完整的课程、复习计划或词汇统计系统。
 
 ## License

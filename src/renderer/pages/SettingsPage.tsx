@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { SYSTEM_TTS_TEST_TEXT } from '@shared/constants'
 import type { PublicSettings, VoiceGender } from '@shared/types'
 import { StatusBanner } from '../components/StatusBanner'
+import { playSpeakResult } from '../play-audio'
 import { useApi } from '../state/api'
 
 export function SettingsPage({ onSaved }: { onSaved: (settings: PublicSettings) => void }) {
@@ -12,6 +14,8 @@ export function SettingsPage({ onSaved }: { onSaved: (settings: PublicSettings) 
   const [obsidianVaultPath, setObsidianVaultPath] = useState('')
   const [current, setCurrent] = useState<PublicSettings | null>(null)
   const [message, setMessage] = useState('')
+  const [ttsState, setTtsState] = useState<'idle' | 'loading'>('idle')
+  const [ttsError, setTtsError] = useState('')
 
   useEffect(() => {
     void api.settings.get().then((settings) => {
@@ -22,6 +26,19 @@ export function SettingsPage({ onSaved }: { onSaved: (settings: PublicSettings) 
       setObsidianVaultPath(settings.obsidianVaultPath)
     })
   }, [api])
+
+  async function testPronunciation() {
+    setTtsState('loading')
+    setTtsError('')
+    try {
+      const result = await api.tts.speak({ text: SYSTEM_TTS_TEST_TEXT, speed: 1 })
+      await playSpeakResult(result, 1)
+      setTtsState('idle')
+    } catch (error) {
+      setTtsState('idle')
+      setTtsError(error instanceof Error ? error.message : '发音失败')
+    }
+  }
 
   return (
     <div className="page">
@@ -75,6 +92,10 @@ export function SettingsPage({ onSaved }: { onSaved: (settings: PublicSettings) 
           />
         </label>
         <h2>发音</h2>
+        <p className="muted">
+          发音使用本机已安装的 Windows / macOS 日语系统语音，无需容器、语音模型或 TTS API
+          Key。点击单句发音时才会生成音频。
+        </p>
         <fieldset>
           <legend>语音</legend>
           <label>
@@ -98,9 +119,21 @@ export function SettingsPage({ onSaved }: { onSaved: (settings: PublicSettings) 
             男声
           </label>
         </fieldset>
-        <p className="muted">
-          发音由本地 Kokoro 完成，但需安装 runtime/model。无需填写远程 TTS 地址或 API Key。
-        </p>
+        <div className="toolbar">
+          <button
+            type="button"
+            className="ghost"
+            disabled={ttsState === 'loading'}
+            onClick={() => void testPronunciation()}
+          >
+            {ttsState === 'loading' ? '正在生成…' : '测试发音'}
+          </button>
+        </div>
+        {ttsError ? (
+          <p className="tts-error" role="alert">
+            {ttsError}
+          </p>
+        ) : null}
         <h2>Obsidian</h2>
         <label>
           Vault Path

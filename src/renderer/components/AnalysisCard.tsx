@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { grammarSaveItem, vocabularySaveItem } from '@shared/save-payload'
 import type { ChatMessage, GrammarItem, JapaneseAnalysis, VocabularyItem } from '@shared/types'
+import { playSpeakResult } from '../play-audio'
 import { useApi } from '../state/api'
 
 export function AnalysisCard({
@@ -202,12 +203,7 @@ function TtsButtons({ text }: { text: string }) {
     setMessage('')
     try {
       const result = await api.tts.speak({ text, speed })
-      const bytes = Uint8Array.from(atob(result.dataBase64), (char) => char.charCodeAt(0))
-      const url = URL.createObjectURL(new Blob([bytes], { type: result.mimeType }))
-      const audio = new Audio(url)
-      audio.playbackRate = speed
-      audio.onended = () => URL.revokeObjectURL(url)
-      await audio.play()
+      await playSpeakResult(result, speed)
       setState('idle')
     } catch (error) {
       setState('error')

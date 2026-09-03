@@ -196,7 +196,7 @@ export function createFakeApi(options?: {
     },
     tts: {
       speak: vi.fn(async () => ({
-        mimeType: 'audio/mpeg',
+        mimeType: 'audio/wav',
         dataBase64: Buffer.from('audio').toString('base64'),
         cached: false,
       })),
