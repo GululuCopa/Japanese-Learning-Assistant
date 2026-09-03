@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { kamauAnalysis, miniPngImage } from './fixtures/prd-cases'
 import { createTestApp, tempDir, testSettings } from './helpers/app'
 
@@ -149,17 +149,23 @@ describe('Obsidian delete sync', () => {
     const saved = app.notes.save(sentenceInput())
     const exported = app.exportNote(saved.note.id)
     const file = path.join(vault, ...exported.relPath!.split('/'))
-    const dir = path.dirname(file)
-    const dirMode = fs.statSync(dir).mode
-    fs.chmodSync(dir, 0o555)
+    const originalUnlink = fs.unlinkSync
+    const unlink = vi.spyOn(fs, 'unlinkSync').mockImplementation((target) => {
+      if (path.resolve(String(target)) === path.resolve(file)) {
+        const error = new Error('operation not permitted') as NodeJS.ErrnoException
+        error.code = 'EPERM'
+        throw error
+      }
+      return originalUnlink(target)
+    })
     try {
       expect(() => app.deleteNote(saved.note.id)).toThrow(/权限/)
       expect(app.notes.get(saved.note.id).id).toBe(saved.note.id)
       expect(fs.existsSync(file)).toBe(true)
     } finally {
-      fs.chmodSync(dir, dirMode)
+      unlink.mockRestore()
+      app.close()
     }
-    app.close()
   })
 
   it('does not delete screenshot assets when removing an exported word note', async () => {
