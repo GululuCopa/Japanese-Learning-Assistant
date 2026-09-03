@@ -12,6 +12,7 @@ import {
 } from '../scripts/deploy-install-policy.mjs'
 
 const root = process.cwd()
+const macPath = path.posix
 
 describe('deploy install argument parsing', () => {
   it('parses supported flags and treats help as success', () => {
@@ -91,29 +92,36 @@ describe('deploy install artifacts and macOS target', () => {
   it('accepts only the exact macOS arm64 app bundle', () => {
     const project = '/Users/dev/japan-listener'
     expect(
-      selectMacApp(project, (candidate: string) =>
-        candidate.endsWith(
-          `${path.sep}release${path.sep}mac-arm64${path.sep}Japanese Learning Assistant.app`,
-        ),
+      selectMacApp(
+        project,
+        (candidate: string) =>
+          candidate.endsWith(
+            `${macPath.sep}release${macPath.sep}mac-arm64${macPath.sep}Japanese Learning Assistant.app`,
+          ),
+        macPath,
       ),
-    ).toBe(path.join(project, 'release', 'mac-arm64', 'Japanese Learning Assistant.app'))
-    expect(() => selectMacApp(project, () => false)).toThrow(/macOS arm64/)
+    ).toBe(macPath.join(project, 'release', 'mac-arm64', 'Japanese Learning Assistant.app'))
+    expect(() => selectMacApp(project, () => false, macPath)).toThrow(/macOS arm64/)
   })
 
   it('restricts macOS install replacement to $HOME/Applications/<exact app>', () => {
     const home = '/Users/demo'
-    const expected = path.join(home, 'Applications', 'Japanese Learning Assistant.app')
-    expect(assertMacInstallTarget(home, expected)).toBe(expected)
-    expect(() => assertMacInstallTarget(home, path.join(home, 'Applications'))).toThrow(
+    const expected = macPath.join(home, 'Applications', 'Japanese Learning Assistant.app')
+    expect(assertMacInstallTarget(home, expected, macPath)).toBe(expected)
+    expect(() => assertMacInstallTarget(home, macPath.join(home, 'Applications'), macPath)).toThrow(
       /Applications/,
     )
     expect(() =>
-      assertMacInstallTarget(home, path.join(home, 'Desktop', 'Japanese Learning Assistant.app')),
+      assertMacInstallTarget(
+        home,
+        macPath.join(home, 'Desktop', 'Japanese Learning Assistant.app'),
+        macPath,
+      ),
     ).toThrow()
     expect(() =>
-      assertMacInstallTarget(home, path.join(home, 'Applications', '..', 'Secret.app')),
+      assertMacInstallTarget(home, macPath.join(home, 'Applications', '..', 'Secret.app'), macPath),
     ).toThrow()
-    expect(() => assertMacInstallTarget('', expected)).toThrow()
+    expect(() => assertMacInstallTarget('', expected, macPath)).toThrow()
   })
 })
 
